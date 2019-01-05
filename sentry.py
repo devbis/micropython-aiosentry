@@ -1,4 +1,5 @@
 import uasyncio as asyncio
+import machine
 import binascii
 import os
 import sys
@@ -64,16 +65,27 @@ class SentryClient:
             '"event_id": "%(event_id)s",'
             '"exception": {"values":[{"type": "%(type)s","value": '
             '%(value)s,"module": "%(module)s"}]},'
+            '"tags": {'
+            '"machine_id": "%(machine_id)s", '
+            '"platform": "%(platform)s",'
+            '"os.name": "%(os_name)s",'
+            '"os.version": "%(os_version)s"},'
             '"extra": {"stacktrace": %(stacktrace)s}'
             '}' %
             {
-                'event_id': binascii.hexlify(os.urandom(16)),
+                'event_id': binascii.hexlify(os.urandom(16)).decode(),
                 'type': exception.__class__.__name__,
                 'value': json.dumps(
                     exception.args[0] if exception.args else '',
                 ),
                 'module': exception,
                 'stacktrace': json.dumps(self.get_exception_str(exception)),
+                'machine_id': binascii.hexlify(machine.unique_id()).decode(),
+                'platform': sys.platform,
+                'os_name': sys.implementation.name,
+                'os_version': ".".join(
+                    str(x) for x in sys.implementation.version
+                ),
             }
         )
         return await self.http_request(
